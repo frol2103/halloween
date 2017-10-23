@@ -9,28 +9,30 @@
 
 
 const int ledCount = 5;    // the number of LEDs in the bar graph
-const int demoButton = 8;
-const int recButton = 10; 
-const int soundPin = 9; 
+const int demoButton = 9;
+const int recButton = 8; 
+const int soundPin = 7; 
 int ledPins[] = {
   2, 3, 4, 5, 6
 };   // an array of pin numbers to which LEDs are attached
+
+const int digitsPins[] = {A4, A3, A2, A1};
 
 int notes[] = {
   523,554,587,622,659  
 };
 
-int digits[10][8] = {
-  {1,1,1,1,0,0,1,1},
-  {1,0,0,1,0,0,0,0},
-  {1,1,1,0,0,1,0,1},
-  {1,0,1,1,0,1,0,1},
-  {1,0,0,1,0,1,1,0},
-  {0,0,1,1,0,1,1,1},
-  {1,1,1,1,0,1,0,1},
-  {1,0,0,1,0,0,0,1},
-  {1,1,1,1,0,1,1,1},
-  {1,0,1,1,0,1,1,1} 
+int digits[10][7] = {
+  {1,1,1,1,1,1,0}, //0
+  {0,1,1,0,0,0,0}, //1
+  {1,1,0,1,1,0,1}, //2
+  {1,1,1,1,0,0,1}, //3
+  {0,1,1,0,0,1,1}, //4
+  {1,0,1,1,0,1,1}, //5
+  {1,1,1,1,1,0,1}, //6
+  {1,1,1,0,0,0,0}, //7
+  {1,1,1,1,1,1,1}, //8
+  {1,1,1,1,0,1,1}  //9
 };
 
 
@@ -52,10 +54,15 @@ boolean registers[numOfRegisterPins];
 
 void setup() {
   pinMode(demoButton, INPUT);
+  pinMode(recButton, INPUT);
+  pinMode(soundPin, OUTPUT);
   randomSeed(analogRead(0));
   // loop over the pin array and set them all to output:
   for (int thisLed = 0; thisLed < ledCount; thisLed++) {
     pinMode(ledPins[thisLed], OUTPUT);
+  }
+  for(int i = 0; i<4; i++){
+    pinMode(digitsPins[i], OUTPUT);
   }
   Serial.begin(9600);
 
@@ -73,7 +80,7 @@ void loop() {
 
     if((random(0,2) < 1) || pinAcc >= ledCount){
       pinAcc = pinAcc+1;
-      tone(9, notes[min(pinAcc-1, (sizeof(notes)/sizeof(int)) -1)], 100);
+      tone(soundPin, notes[min(pinAcc-1, (sizeof(notes)/sizeof(int)) -1)], 100);
     }
     lightLeds(pinAcc, pinAcc <= ledCount || pinAcc%2 != 0);
     delay(100);
@@ -121,25 +128,12 @@ void lightLeds(int untilPin, int blinkOverride){
 
 
 void recFeedback(int maxV){
-  float sensor = 0.84;//sensorAcc/1024.0;
-  int maxLed = (int) (sensor*5);
-  int digit1 = (int)(sensor * 10) % 10;
-  int digit2 = (int)(sensor * 100) % 10;
+  int maxLed = (int) ((maxV/1024.0)*5);
 
-  for(int i = 0; i < 30; i++){
-    Serial.println("digit1");
-    Serial.println(digit1);
-    Serial.println("digit2");
-    Serial.println(digit2);
-    lightLeds(min(maxLed,i), (i <= maxLed) || ((i%2) == 0));
-    if((i%10) <4){
-      writeDigit(digit1,false);
-    } else if((i%10) < 8){
-      writeDigit(digit2,true);
-    } else {
-      clearDigit();
-    }
-    delay(100);
+  for(int i = 0; i < 3000; i++){
+    writeNumber((i/100)%10,i%4);
+    //lightLeds(min(maxLed,i), (i <= maxLed) || ((i%2) == 0));
+    delay(2);
   }
   clearDigit();
   sensorAcc=0;
@@ -174,20 +168,26 @@ void setRegisterPin(int index, int value){
 }
 
 
-void writeDigit(int d, bool point){
-  clearRegisters();
-  for(int i; i<8; i++){
-    if(digits[d][i] == 1){
-      setRegisterPin(i, HIGH);
+void writeNumber(int d, int pos){
+  for(int i = 0; i < 4; i ++){
+    if(pos == i){
+      digitalWrite(digitsPins[i], LOW);
     } else {
-      setRegisterPin(i, LOW);
+      digitalWrite(digitsPins[i], HIGH);
     }
   }
-  if(point){
-      setRegisterPin(4, HIGH);
+  writeDigit(d);
+}
+void writeDigit(int d){
+  clearRegisters();
+  for(int i; i<7; i++){
+    if(digits[d][i] == 1){
+      setRegisterPin(i+1, HIGH);
     } else {
-      setRegisterPin(4, LOW);
+      setRegisterPin(i+1, LOW);
     }
+  }
+  
   writeRegisters();
 }
 
