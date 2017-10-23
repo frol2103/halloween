@@ -29,7 +29,7 @@ int digits[10][7] = {
   {1,1,1,1,0,0,1}, //3
   {0,1,1,0,0,1,1}, //4
   {1,0,1,1,0,1,1}, //5
-  {1,1,1,1,1,0,1}, //6
+  {1,0,1,1,1,1,1}, //6
   {1,1,1,0,0,0,0}, //7
   {1,1,1,1,1,1,1}, //8
   {1,1,1,1,0,1,1}  //9
@@ -80,7 +80,7 @@ void loop() {
 
     if((random(0,2) < 1) || pinAcc >= ledCount){
       pinAcc = pinAcc+1;
-      tone(soundPin, notes[min(pinAcc-1, (sizeof(notes)/sizeof(int)) -1)], 100);
+      soundFor(pinAcc - 1);
     }
     lightLeds(pinAcc, pinAcc <= ledCount || pinAcc%2 != 0);
     delay(100);
@@ -128,12 +128,15 @@ void lightLeds(int untilPin, int blinkOverride){
 
 
 void recFeedback(int maxV){
-  int maxLed = (int) ((maxV/1024.0)*5);
-
-  for(int i = 0; i < 3000; i++){
-    writeNumber((i/100)%10,i%4);
-    //lightLeds(min(maxLed,i), (i <= maxLed) || ((i%2) == 0));
-    delay(2);
+  int maxLed = 3;//(int) ((maxV/1024.0)*5);
+  const int ledPeriod=100;
+  for(int i = 0; i < 1000; i++){
+    writeNumber(maxV,i%4);
+    lightLeds(min(maxLed,i), (i <= maxLed) || ((i%ledPeriod) < (ledPeriod/2)));
+    if(i%ledPeriod==0){
+      soundFor(maxLed);  
+    }
+    
   }
   clearDigit();
   sensorAcc=0;
@@ -176,7 +179,11 @@ void writeNumber(int d, int pos){
       digitalWrite(digitsPins[i], HIGH);
     }
   }
-  writeDigit(d);
+  int dig = ((int)(d/pow(10,3-pos)))%10;
+  writeDigit(dig);
+  delay(2);
+  clearDigit();
+
 }
 void writeDigit(int d){
   clearRegisters();
@@ -195,3 +202,9 @@ void clearDigit(){
   clearRegisters();
   writeRegisters();
 }
+
+void soundFor(int level){
+  tone(soundPin, notes[min(level-1, (sizeof(notes)/sizeof(int)) -1)], 100);
+}
+
+
